@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Infamous003/follow-service/internal/config"
+	"github.com/Infamous003/follow-service/internal/database"
 )
 
 func main() {
@@ -13,5 +13,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Configuration loaded: %+v\n", cfg)
+	db, err := database.NewDB(cfg.DB)
+	if err != nil {
+		log.Fatal("failed to connect to the database:", err)
+	}
+	defer db.Close()
 }
