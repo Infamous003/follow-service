@@ -1,9 +1,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Infamous003/follow-service/internal/config"
 	"github.com/Infamous003/follow-service/internal/database"
@@ -15,17 +21,20 @@ import (
 )
 
 func main() {
+	// LOading configs
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Connecting to the DB
 	db, err := database.NewDB(cfg.DB)
 	if err != nil {
 		log.Fatal("failed to connect to the database:", err)
 	}
 	defer db.Close()
 
+	// Repos and services
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
@@ -34,26 +43,63 @@ func main() {
 	followService := service.NewFollowService(followRepo, userRepo)
 	followHandler := handler.NewFollowHandler(followService)
 
+	// Chi router and middlewares
 	router := chi.NewRouter()
+	router.Use(middleware.Recoverer)
 	router.Use(middleware.Logger)
 
+	// User routes
 	router.Post("/users", userHandler.CreateUser)
 	router.Get("/users/{id}", userHandler.GetUserByID)
 	router.Get("/users", userHandler.ListUsers)
-	router.Get("/users/{id}/followers", followHandler.ListFollowers)
-	router.Get("/users/{id}/following", followHandler.ListFollowing)
 
+	// Follow routes
 	router.Post("/follow", followHandler.FollowUser)
 	router.Post("/unfollow", followHandler.UnfollowUser)
 
-	s := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler: router,
+	router.Get("/users/{id}/followers", followHandler.ListFollowers)
+	router.Get("/users/{id}/following", followHandler.ListFollowing)
+
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:      router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Printf("Starting server on %s\n", s.Addr)
+	// a channel to store shutdown errors
+	shutdownErr := make(chan error)
 
-	if err := http.ListenAndServe(":8080", router); err != nil {
+	go func() {
+		// chan to store OS signal
+		quit := make(chan os.Signal, 1)
+
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-quit
+		log.Printf("caught sig: %+v, shutting down server", sig)
+
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+		defer cancel()
+
+		err := server.Shutdown(ctx)
+		if err != nil {
+			shutdownErr <- err
+		}
+
+		log.Println("server stopped")
+		shutdownErr <- nil
+	}()
+
+	log.Printf("Starting server on %s\n", server.Addr)
+
+	err = server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal("Server failed to start:", err)
 	}
+	err = <-shutdownErr
+	if err != nil {
+		log.Fatal("failed to shutdown server gracefully:", err)
+	}
+	log.Println("server exited properly")
 }
