@@ -34,6 +34,8 @@ func main() {
 	router.Use(middleware.Logger)
 
 	router.Post("/users", userHandler.CreateUser)
+	router.Get("/users/{id}", userHandler.GetUserByID)
+	router.Get("/users", userHandler.ListUsers)
 
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),

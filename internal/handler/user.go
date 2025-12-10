@@ -51,3 +51,40 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		serverErrorResponse(w, r, err)
 	}
 }
+
+func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
+	userID, err := readIDParam(r)
+	if err != nil {
+		badRequestResponse(w, r, err)
+		return
+	}
+
+	user, err := h.UserService.GetUserByID(userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			notfoundResponse(w, r)
+		default:
+			serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+	}
+}
+
+func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.UserService.ListUsers()
+	if err != nil {
+		serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = writeJSON(w, http.StatusOK, envelope{"users": users}, nil)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+	}
+}
