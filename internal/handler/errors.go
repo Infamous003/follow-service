@@ -22,6 +22,7 @@ func notfoundResponse(w http.ResponseWriter, r *http.Request) {
 
 func serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	message := "the server encountered an error and could not process your request"
+	log.Println(err)
 	errorResponse(w, r, http.StatusInternalServerError, message)
 }
 
@@ -31,4 +32,8 @@ func badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 
 func failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
 	errorResponse(w, r, http.StatusUnprocessableEntity, errors)
+}
+
+func conflictResponse(w http.ResponseWriter, r *http.Request, message any) {
+	errorResponse(w, r, http.StatusConflict, message)
 }

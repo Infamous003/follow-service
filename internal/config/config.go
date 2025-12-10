@@ -20,7 +20,7 @@ type DBConfig struct {
 }
 
 type ServerConfig struct {
-	port            int
+	Port            int
 	ShutdownTimeout time.Duration
 }
 
@@ -41,7 +41,7 @@ func Load() (*Config, error) {
 			MaxIdleTime:  getEnvAsDuration("DB_MAX_IDLE_TIME", 15*time.Minute),
 		},
 		Server: ServerConfig{
-			port:            port,
+			Port:            port,
 			ShutdownTimeout: 5 * time.Second,
 		},
 		App: AppConfig{
