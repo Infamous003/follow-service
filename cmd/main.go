@@ -30,12 +30,19 @@ func main() {
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)
 
+	followRepo := repository.NewFollowRepository(db)
+	followService := service.NewFollowService(followRepo, userRepo)
+	followHandler := handler.NewFollowHandler(followService)
+
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
 	router.Post("/users", userHandler.CreateUser)
 	router.Get("/users/{id}", userHandler.GetUserByID)
 	router.Get("/users", userHandler.ListUsers)
+
+	router.Post("/follow", followHandler.FollowUser)
+	router.Post("/unfollow", followHandler.UnfollowUser)
 
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
