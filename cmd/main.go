@@ -18,6 +18,10 @@ import (
 	"github.com/Infamous003/follow-service/internal/service"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func main() {
@@ -33,6 +37,10 @@ func main() {
 		log.Fatal("failed to connect to the database:", err)
 	}
 	defer db.Close()
+
+	if err := runMigrations(cfg.DB.DSN); err != nil {
+		log.Fatal("failed to run migrations:", err)
+	}
 
 	// Repos and services
 	userRepo := repository.NewUserRepository(db)
@@ -102,4 +110,20 @@ func main() {
 		log.Fatal("failed to shutdown server gracefully:", err)
 	}
 	log.Println("server exited properly")
+}
+
+func runMigrations(dsn string) error {
+	m, err := migrate.New(
+		"file://migrations",
+		dsn,
+	)
+	if err != nil {
+		return err
+	}
+	err = m.Up()
+	if errors.Is(err, migrate.ErrNoChange) {
+		return nil
+	}
+
+	return err
 }
