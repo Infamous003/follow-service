@@ -75,3 +75,51 @@ func (h *FollowHandler) UnfollowUser(w http.ResponseWriter, r *http.Request) {
 		serverErrorResponse(w, r, err)
 	}
 }
+
+func (h *FollowHandler) ListFollowers(w http.ResponseWriter, r *http.Request) {
+	id, err := readIDParam(r)
+	if err != nil {
+		badRequestResponse(w, r, err)
+		return
+	}
+
+	followers, err := h.followService.ListFollowers(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			notfoundResponse(w, r)
+		default:
+			serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusOK, envelope{"followers": followers}, nil)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+	}
+}
+
+func (h *FollowHandler) ListFollowing(w http.ResponseWriter, r *http.Request) {
+	id, err := readIDParam(r)
+	if err != nil {
+		badRequestResponse(w, r, err)
+		return
+	}
+
+	following, err := h.followService.ListFollowing(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrUserNotFound):
+			notfoundResponse(w, r)
+		default:
+			serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusOK, envelope{"following": following}, nil)
+	if err != nil {
+		serverErrorResponse(w, r, err)
+	}
+}

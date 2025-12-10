@@ -40,6 +40,8 @@ func main() {
 	router.Post("/users", userHandler.CreateUser)
 	router.Get("/users/{id}", userHandler.GetUserByID)
 	router.Get("/users", userHandler.ListUsers)
+	router.Get("/users/{id}/followers", followHandler.ListFollowers)
+	router.Get("/users/{id}/following", followHandler.ListFollowing)
 
 	router.Post("/follow", followHandler.FollowUser)
 	router.Post("/unfollow", followHandler.UnfollowUser)

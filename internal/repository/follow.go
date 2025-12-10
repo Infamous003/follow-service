@@ -81,7 +81,7 @@ func (r *FollowRepository) ListFollowers(userID int64) ([]*domain.User, error) {
 	}
 	defer rows.Close()
 
-	var followers []*domain.User
+	followers := []*domain.User{}
 	for rows.Next() {
 		var user domain.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.CreatedAt); err != nil {
@@ -91,4 +91,33 @@ func (r *FollowRepository) ListFollowers(userID int64) ([]*domain.User, error) {
 	}
 
 	return followers, nil
+}
+
+func (r *FollowRepository) ListFollowing(userID int64) ([]*domain.User, error) {
+	query := `
+		SELECT u.id, u.username, u.created_at
+		FROM users u
+		JOIN follows f ON u.id = f.followee_id
+		WHERE f.follower_id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	following := []*domain.User{}
+	for rows.Next() {
+		var user domain.User
+		if err := rows.Scan(&user.ID, &user.Username, &user.CreatedAt); err != nil {
+			return nil, err
+		}
+		following = append(following, &user)
+	}
+
+	return following, nil
 }
